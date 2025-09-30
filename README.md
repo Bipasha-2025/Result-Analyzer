@@ -15,6 +15,29 @@ A Rails application that processes student test results from a third-party servi
 
 ---
 
+## ⚠️ Assumptions
+
+- MSM sends a JSON POST with the following fields:
+  - `student_name`  
+  - `subject`  
+  - `marks`  
+  - `timestamp` (ISO8601 format)  
+- We store MSM submissions as `Result` records, using `submitted_at` from the `timestamp` field.  
+
+- The EOD job runs **daily at 6:00 PM** and aggregates results for the **target date** (by default, `Date.current`) into `DailyResultStat` records, one per subject per date.  
+
+- If the target date is the **Monday of the week containing the third Wednesday of the month**, the job also triggers **monthly-average calculation**.  
+
+- **Monthly-average calculation logic:**
+  - Go back from the target date through `DailyResultStat` records (descending by date).  
+  - Include at least **5 days**, and keep extending until the aggregated `result_count` ≥ 200 (or until no more historical data exists).  
+  - Compute averages of `daily_high` and `daily_low` across the considered days.  
+  - Store a `MonthlyAverage` record per subject.  
+
+- The job **accepts a date parameter** if you want different behavior (e.g., aggregate the previous day instead of today).  
+
+---
+
 ## 🗂 Models
 
 ### `Result`
